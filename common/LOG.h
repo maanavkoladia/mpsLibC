@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* ================================================== */
 /*            GLOBAL VARIABLE DEFINITIONS             */
@@ -27,6 +28,8 @@
 /* ================================================== */
 /*                 FUNCTION DEFINITIONS               */
 /* ================================================== */
+#define __FILENAME__                                                           \
+    (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 #ifndef NDEBUG
 #define LOG(fmt, ...)                                                          \
@@ -35,7 +38,7 @@
         snprintf(___logBuf, sizeof(___logBuf),                                 \
                  ANSI_COLOR_CYAN                                               \
                  "[%s:%d:%s] \n" ANSI_COLOR_WHITE fmt ANSI_COLOR_RESET "\n",   \
-                 __FILE__, __LINE__, __func__, ##__VA_ARGS__);                 \
+                 __FILENAME__, __LINE__, __func__, ##__VA_ARGS__);             \
         fprintf(stderr, "%s", ___logBuf);                                      \
         fflush(stderr);                                                        \
     } while (0)
