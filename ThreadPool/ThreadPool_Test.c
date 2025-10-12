@@ -7,9 +7,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define THREAD_COUNT (2)
+#define THREAD_COUNT (8)
 #define FIFO_DEPTH (100)
-#define WORK_TO_DO (1000000)
+#define WORK_TO_DO (100000)
 
 static_assert(WORK_TO_DO % THREAD_COUNT == 0, "WORK_TO_DO must be divisible by THREAD_COUNT");
 
