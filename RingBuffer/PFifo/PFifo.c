@@ -2,12 +2,12 @@
 /*                      INCLUDES                      */
 /* ================================================== */
 #include "PFifo.h"
-#include <stddef.h>
-#include <stdbool.h>
-#include <string.h>
-#include <stdlib.h>
 #include <semaphore.h>
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* ================================================== */
 /*            GLOBAL VARIABLE DEFINITIONS             */
@@ -19,35 +19,43 @@
 /*            FUNCTION PROTOTYPES (DECLARATIONS)      */
 /* ================================================== */
 
+typedef struct pFifo_t {
+    size_t head_pFifo, tail_pFifo, size_pFifo;
+    uint8_t* dataBuf_pFifo;
+    size_t elem_size;
+    sem_t *mutex, *SlotsAvailable, *DataAvailable;
+} pFifo_t;
 
 /* ================================================== */
 /*                 FUNCTION DEFINITIONS               */
 /* ================================================== */
 
-static bool Enqueue(uint8_t *inData, pFifo_t* fifo){
+static bool Enqueue(uint8_t* inData, pFifo_t* fifo) {
     size_t nextptr = fifo->head_pFifo + 1 >= fifo->size_pFifo ? 0 : fifo->head_pFifo + 1;
     if (nextptr == fifo->tail_pFifo) { // FIFO is full
         return false;
     }
 
-    memcpy(fifo->dataBuf_pFifo + (fifo->head_pFifo * fifo->elem_size), inData, fifo->elem_size); // Copy data into FIFO
+    memcpy(fifo->dataBuf_pFifo + (fifo->head_pFifo * fifo->elem_size), inData,
+           fifo->elem_size); // Copy data into FIFO
 
     fifo->head_pFifo = nextptr;
     return true;
 }
 
-static bool Dequeue(uint8_t* OutData, pFifo_t* fifo){
+static bool Dequeue(uint8_t* OutData, pFifo_t* fifo) {
     if (fifo->head_pFifo == fifo->tail_pFifo) { // FIFO is empty
         return false;
     }
 
-    memcpy(OutData, fifo->dataBuf_pFifo + (fifo->tail_pFifo * fifo->elem_size), fifo->elem_size); // Copy data out of FIFO
+    memcpy(OutData, fifo->dataBuf_pFifo + (fifo->tail_pFifo * fifo->elem_size),
+           fifo->elem_size); // Copy data out of FIFO
 
     fifo->tail_pFifo = fifo->tail_pFifo + 1 >= fifo->size_pFifo ? 0 : fifo->tail_pFifo + 1;
     return true;
 }
 
-PFIFO_API err_pFifo_t pFifoPush(pFifo_t* pfifo, void* data){
+PFIFO_API err_pFifo_t pFifoPush(pFifo_t* pfifo, void* data) {
     sem_wait(pfifo->SlotsAvailable);
     sem_wait(pfifo->mutex);
 
@@ -55,10 +63,23 @@ PFIFO_API err_pFifo_t pFifoPush(pFifo_t* pfifo, void* data){
 
     sem_post(pfifo->mutex);
     sem_post(pfifo->DataAvailable);
-    return sucess? PFIFO_SUCCESS : PFIFO_PUSH_FAIL;
+    return sucess ? PFIFO_SUCCESS : PFIFO_PUSH_FAIL;
 }
 
-PFIFO_API err_pFifo_t pFifoPop(pFifo_t* pfifo, void* data){
+PFIFO_API err_pFifo_t pFifoTryPush(pFifo_t* pfifo, void* data) {
+    if (sem_trywait(pfifo->SlotsAvailable) != EXIT_SUCCESS) {
+        return PFIFO_POP_FAIL_FIFO_FULL;
+    }
+    sem_wait(pfifo->mutex);
+
+    bool sucess = Enqueue(data, pfifo);
+
+    sem_post(pfifo->mutex);
+    sem_post(pfifo->DataAvailable);
+    return sucess ? PFIFO_SUCCESS : PFIFO_PUSH_FAIL;
+}
+
+PFIFO_API err_pFifo_t pFifoPop(pFifo_t* pfifo, void* data) {
     sem_wait(pfifo->DataAvailable);
     sem_wait(pfifo->mutex);
 
@@ -66,11 +87,11 @@ PFIFO_API err_pFifo_t pFifoPop(pFifo_t* pfifo, void* data){
 
     sem_post(pfifo->mutex);
     sem_post(pfifo->SlotsAvailable);
-    return sucess? PFIFO_SUCCESS : PFIFO_POP_FAIL;
+    return sucess ? PFIFO_SUCCESS : PFIFO_POP_FAIL;
 }
 
-PFIFO_API err_pFifo_t pFifoTryPop(pFifo_t* pfifo, void* data){
-    if(sem_trywait(pfifo->DataAvailable) != EXIT_SUCCESS){
+PFIFO_API err_pFifo_t pFifoTryPop(pFifo_t* pfifo, void* data) {
+    if (sem_trywait(pfifo->DataAvailable) != EXIT_SUCCESS) {
         return PFIFO_POP_FAIL_FIFO_EMPTY;
     }
 
@@ -80,10 +101,10 @@ PFIFO_API err_pFifo_t pFifoTryPop(pFifo_t* pfifo, void* data){
 
     sem_post(pfifo->mutex);
     sem_post(pfifo->SlotsAvailable);
-    return sucess? PFIFO_SUCCESS : PFIFO_POP_FAIL;
+    return sucess ? PFIFO_SUCCESS : PFIFO_POP_FAIL;
 }
 
-PFIFO_API pFifo_t* pFifo_Create(size_t datasize, size_t numOfElements) {
+PFIFO_API pFifo_t* pFifoCreate(size_t datasize, size_t numOfElements) {
     if (datasize < 1 || numOfElements < 1) {
         return PFIFO_CREATE_ERR;
     }
@@ -113,7 +134,7 @@ PFIFO_API pFifo_t* pFifo_Create(size_t datasize, size_t numOfElements) {
 
     if (sem_init(pnewFifo->mutex, 0, 1) != 0) goto cleanup;
     if (sem_init(pnewFifo->DataAvailable, 0, 0) != 0) goto cleanup;
-    if (sem_init(pnewFifo->SlotsAvailable, 0, fifoSize-1) != 0) goto cleanup;
+    if (sem_init(pnewFifo->SlotsAvailable, 0, fifoSize - 1) != 0) goto cleanup;
 
     return pnewFifo;
 
@@ -130,14 +151,14 @@ cleanup:
     return PFIFO_CREATE_ERR;
 }
 
-PFIFO_API err_pFifo_t pFifoFree(pFifo_t* fifo){
+PFIFO_API err_pFifo_t pFifoFree(pFifo_t* fifo) {
     free(fifo->dataBuf_pFifo);
     free(fifo->mutex);
     free(fifo);
     return PFIFO_SUCCESS;
 }
 
-PFIFO_API uint32_t pFifoSize(pFifo_t* fifo ){
+PFIFO_API uint32_t pFifoSize(pFifo_t* fifo) {
     return fifo->size_pFifo - 1;
 }
 
@@ -151,9 +172,8 @@ PFIFO_API size_t pFifoElemCount(pFifo_t* fifo) {
     }
 }
 
-PFIFO_API void pFifoFlush(pFifo_t* fifo){
+PFIFO_API void pFifoFlush(pFifo_t* fifo) {
     uint8_t dumpBuf[fifo->elem_size];
-    while(pFifoTryPop(fifo, dumpBuf) != PFIFO_POP_FAIL_FIFO_EMPTY){}
+    while (pFifoTryPop(fifo, dumpBuf) != PFIFO_POP_FAIL_FIFO_EMPTY) {
+    }
 }
-
-
