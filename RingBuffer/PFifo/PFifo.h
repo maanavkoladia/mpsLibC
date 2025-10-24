@@ -20,6 +20,7 @@ typedef enum {
     PFIFO_POP_FAIL,
     PFIFO_POP_FAIL_FIFO_EMPTY,
     PFIFO_POP_FAIL_FIFO_FULL,
+    PFIFO_CREATE_FAIL,
 } err_pFifo_t;
 
 typedef struct pFifo_t pFifo_t;

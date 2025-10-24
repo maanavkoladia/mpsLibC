@@ -12,7 +12,6 @@
 /* ================================================== */
 /*            GLOBAL VARIABLE DEFINITIONS             */
 /* ================================================== */
-#define PFIFO_CREATE_ERR (NULL)
 #define PFIFO_NUM_SEMA4S_NEEDED (3)
 
 /* ================================================== */
@@ -104,9 +103,9 @@ PFIFO_API err_pFifo_t pFifoTryPop(pFifo_t* pfifo, void* data) {
     return sucess ? PFIFO_SUCCESS : PFIFO_POP_FAIL;
 }
 
-PFIFO_API pFifo_t* pFifoCreate(size_t datasize, size_t numOfElements) {
+PFIFO_API err_pFifo_t pFifoCreate(size_t datasize, size_t numOfElements, pFifo_t** ppFifoOut) {
     if (datasize < 1 || numOfElements < 1) {
-        return PFIFO_CREATE_ERR;
+        return PFIFO_CREATE_FAIL;
     }
     int fifoSize = numOfElements + 1;
     pFifo_t* pnewFifo = NULL;
@@ -135,8 +134,8 @@ PFIFO_API pFifo_t* pFifoCreate(size_t datasize, size_t numOfElements) {
     if (sem_init(pnewFifo->mutex, 0, 1) != 0) goto cleanup;
     if (sem_init(pnewFifo->DataAvailable, 0, 0) != 0) goto cleanup;
     if (sem_init(pnewFifo->SlotsAvailable, 0, fifoSize - 1) != 0) goto cleanup;
-
-    return pnewFifo;
+    *ppFifoOut = pnewFifo;
+    return PFIFO_SUCCESS;
 
 cleanup:
     if (semBuf) {
@@ -148,7 +147,7 @@ cleanup:
     }
     free(dataBuf);
     free(pnewFifo);
-    return PFIFO_CREATE_ERR;
+    return PFIFO_CREATE_FAIL;
 }
 
 PFIFO_API err_pFifo_t pFifoFree(pFifo_t* fifo) {
