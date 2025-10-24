@@ -29,7 +29,7 @@ typedef struct pFifo_t pFifo_t;
 /*                 FUNCTION PROTOTYPES                */
 /* ================================================== */
 
-PFIFO_API pFifo_t* pFifoCreate(size_t datasize, size_t fifoSize);
+PFIFO_API err_pFifo_t pFifoCreate(size_t datasize, size_t numOfElements, pFifo_t** ppFifoOut);
 
 PFIFO_API err_pFifo_t pFifoFree(pFifo_t* fifo);
 
