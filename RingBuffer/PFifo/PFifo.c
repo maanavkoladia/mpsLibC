@@ -2,12 +2,14 @@
 /*                      INCLUDES                      */
 /* ================================================== */
 #include "PFifo.h"
+#include <errno.h>
 #include <semaphore.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 /* ================================================== */
 /*            GLOBAL VARIABLE DEFINITIONS             */
@@ -66,16 +68,47 @@ PFIFO_API err_pFifo_t pFifoPush(pFifo_t* pfifo, void* data) {
 }
 
 PFIFO_API err_pFifo_t pFifoTryPush(pFifo_t* pfifo, void* data) {
-    if (sem_trywait(pfifo->SlotsAvailable) != EXIT_SUCCESS) {
-        return PFIFO_POP_FAIL_FIFO_FULL;
-    }
-    sem_wait(pfifo->mutex);
+    if (!pfifo || !data) return PFIFO_PUSH_FAIL;
 
-    bool sucess = Enqueue(data, pfifo);
+    if (sem_trywait(pfifo->SlotsAvailable) == -1) {
+        if (errno == EAGAIN) return PFIFO_POP_FAIL_FIFO_FULL;
+        return PFIFO_PUSH_FAIL;
+    }
+
+    if (sem_wait(pfifo->mutex) == -1) {
+        sem_post(pfifo->SlotsAvailable); // restore slot
+        return PFIFO_PUSH_FAIL;
+    }
+
+    bool success = Enqueue(data, pfifo);
 
     sem_post(pfifo->mutex);
-    sem_post(pfifo->DataAvailable);
-    return sucess ? PFIFO_SUCCESS : PFIFO_PUSH_FAIL;
+    if (success) sem_post(pfifo->DataAvailable);
+
+    return success ? PFIFO_SUCCESS : PFIFO_PUSH_FAIL;
+}
+
+PFIFO_API err_pFifo_t pFifoTimedPush(pFifo_t* pfifo, void* data,
+                                     const struct timespec* absTimeout) {
+    if (!pfifo || !data) return PFIFO_PUSH_FAIL;
+
+    if (sem_timedwait(pfifo->SlotsAvailable, absTimeout) == -1) {
+        if (errno == ETIMEDOUT) return PFIFO_POP_FAIL_FIFO_FULL;
+        return PFIFO_PUSH_FAIL;
+    }
+
+    if (sem_wait(pfifo->mutex) == -1) {
+        // Release the slot back
+        sem_post(pfifo->SlotsAvailable);
+        return PFIFO_PUSH_FAIL;
+    }
+
+    bool success = Enqueue(data, pfifo);
+
+    sem_post(pfifo->mutex);
+    if (success) sem_post(pfifo->DataAvailable);
+
+    return success ? PFIFO_SUCCESS : PFIFO_PUSH_FAIL;
 }
 
 PFIFO_API err_pFifo_t pFifoPop(pFifo_t* pfifo, void* data) {
@@ -90,17 +123,45 @@ PFIFO_API err_pFifo_t pFifoPop(pFifo_t* pfifo, void* data) {
 }
 
 PFIFO_API err_pFifo_t pFifoTryPop(pFifo_t* pfifo, void* data) {
-    if (sem_trywait(pfifo->DataAvailable) != EXIT_SUCCESS) {
-        return PFIFO_POP_FAIL_FIFO_EMPTY;
+    if (!pfifo || !data) return PFIFO_POP_FAIL;
+
+    if (sem_trywait(pfifo->DataAvailable) == -1) {
+        if (errno == EAGAIN) return PFIFO_POP_FAIL_FIFO_EMPTY;
+        return PFIFO_POP_FAIL;
     }
 
-    sem_wait(pfifo->mutex);
+    if (sem_wait(pfifo->mutex) == -1) {
+        sem_post(pfifo->DataAvailable); // restore semaphore
+        return PFIFO_POP_FAIL;
+    }
 
-    bool sucess = Dequeue(data, pfifo);
+    bool success = Dequeue(data, pfifo);
 
     sem_post(pfifo->mutex);
-    sem_post(pfifo->SlotsAvailable);
-    return sucess ? PFIFO_SUCCESS : PFIFO_POP_FAIL;
+    if (success) sem_post(pfifo->SlotsAvailable); // signal producer
+
+    return success ? PFIFO_SUCCESS : PFIFO_POP_FAIL;
+}
+
+PFIFO_API err_pFifo_t pFifoTimedPop(pFifo_t* pfifo, void* data, const struct timespec* absTimeout) {
+    if (!pfifo || !data) return PFIFO_POP_FAIL;
+
+    if (sem_timedwait(pfifo->DataAvailable, absTimeout) == -1) {
+        if (errno == ETIMEDOUT) return PFIFO_POP_FAIL_FIFO_EMPTY;
+        return PFIFO_POP_FAIL;
+    }
+
+    if (sem_wait(pfifo->mutex) == -1) {
+        sem_post(pfifo->DataAvailable); // restore semaphore
+        return PFIFO_POP_FAIL;
+    }
+
+    bool success = Dequeue(data, pfifo);
+
+    sem_post(pfifo->mutex);
+    if (success) sem_post(pfifo->SlotsAvailable);
+
+    return success ? PFIFO_SUCCESS : PFIFO_POP_FAIL;
 }
 
 PFIFO_API err_pFifo_t pFifoCreate(size_t datasize, size_t numOfElements, pFifo_t** ppFifoOut) {
