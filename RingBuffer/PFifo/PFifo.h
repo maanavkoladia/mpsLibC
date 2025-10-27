@@ -20,6 +20,7 @@ typedef enum {
     PFIFO_POP_FAIL,
     PFIFO_POP_FAIL_FIFO_EMPTY,
     PFIFO_POP_FAIL_FIFO_FULL,
+    PFIFO_CREATE_FAIL,
 } err_pFifo_t;
 
 typedef struct pFifo_t pFifo_t;
@@ -28,15 +29,17 @@ typedef struct pFifo_t pFifo_t;
 /*                 FUNCTION PROTOTYPES                */
 /* ================================================== */
 
-PFIFO_API pFifo_t* pFifoCreate(size_t datasize, size_t fifoSize);
+PFIFO_API err_pFifo_t pFifoCreate(size_t datasize, size_t numOfElements, pFifo_t** ppFifoOut);
 
 PFIFO_API err_pFifo_t pFifoFree(pFifo_t* fifo);
 
 PFIFO_API err_pFifo_t pFifoPush(pFifo_t* pfifo, void* data);
+PFIFO_API err_pFifo_t pFifoTryPush(pFifo_t* pfifo, void* data);
+PFIFO_API err_pFifo_t pFifoTimedPush(pFifo_t* pfifo, void* data, const struct timespec* absTimeout);
 
 PFIFO_API err_pFifo_t pFifoPop(pFifo_t* pfifo, void* data);
-
 PFIFO_API err_pFifo_t pFifoTryPop(pFifo_t* pfifo, void* data);
+PFIFO_API err_pFifo_t pFifoTimedPop(pFifo_t* pfifo, void* data, const struct timespec* absTimeout);
 
 PFIFO_API uint32_t pFifoSize(pFifo_t* fifo);
 
