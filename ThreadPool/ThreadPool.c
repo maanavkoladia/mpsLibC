@@ -81,7 +81,8 @@ THREAD_POOL_API ThreadPool_err_t ThreadPool_Init(ThreadPool_t** ppTP, size_t thr
     pTP_local->threads = (pthread_t*)malloc(sizeof(pthread_t) * pTP_local->threadCount);
     ASSERT_COMMON(pTP_local->threads, "Failed to alloc the array of pthread_ts");
 
-    pTP_local->workQueue = pFifoCreate(sizeof(JobData_t), workQueueDepth);
+    ASSERT_COMMON_POSIX(pFifoCreate(sizeof(JobData_t), workQueueDepth, &pTP_local->workQueue),
+                        "Fialed to init the work queue");
     ASSERT_COMMON(pTP_local->workQueue, "Failed to create thread pool work queue");
 
 #else

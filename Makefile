@@ -1,6 +1,6 @@
-LIB = mpcLibc
+LIB = mpcLibC
 BUILD_DIR = build
-TARGET = $(LIB).a
+TARGET = $(BUILD_DIR)/$(LIB).a
 
 CC = gcc
 
