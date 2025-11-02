@@ -1,4 +1,4 @@
-LIB = mpcLibC
+LIB = mpsLibC
 BUILD_DIR = build
 TARGET = $(BUILD_DIR)/$(LIB).a
 
@@ -38,5 +38,4 @@ $(BUILD_DIR):
 	mkdir -p $@
 
 clean:
-	rm -rf $(BUILD_DIR)
-	rm -f $(TARGET)
+	rm -rf ./$(BUILD_DIR)
