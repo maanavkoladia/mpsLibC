@@ -6,7 +6,6 @@
 #include "../../common/LOG.h"
 #include <ck_ring.h>
 #include <stdint.h>
-#include <time.h>
 
 /* ================================================== */
 /*            GLOBAL VARIABLE DEFINITIONS             */
@@ -83,8 +82,8 @@ LF_FIFO_API err_LF_Fifo_t LF_Fifo_TimedPush(LF_Fifo_t* pfifo, void* pvData,
                                             const struct timespec* Timeout) {
     ASSERT_COMMON(pfifo, "Got a NULL fifo");
     ASSERT_COMMON(pvData, "Got a NULL data ptr");
-    ASSERT_COMMON(Timeout->tv_nsec >= timeOutWakeUp.tv_nsec, "TimeOut Too Short, Must be >= %lu ns",
-                  timeOutWakeUp.tv_nsec);
+    ASSERT_COMMON(Timeout->tv_nsec + (Timeout->tv_sec * 1000000000) >= timeOutWakeUp.tv_nsec,
+                  "TimeOut Too Short, Must be >= %lu ns", timeOutWakeUp.tv_nsec);
 
     uint64_t finalCount =
         ((Timeout->tv_sec * 1000000000) + Timeout->tv_nsec) / timeOutWakeUp.tv_nsec;
@@ -97,14 +96,14 @@ LF_FIFO_API err_LF_Fifo_t LF_Fifo_TimedPush(LF_Fifo_t* pfifo, void* pvData,
     return LF_FIFO_SUCCESS;
 }
 
-LF_FIFO_API err_LF_Fifo_t LF_Fifo_SpinPop(LF_Fifo_t* pfifo, void** ppvDataOut) {
+LF_FIFO_API err_LF_Fifo_t LF_Fifo_SpinPop(LF_Fifo_t* pfifo, void* ppvDataOut) {
     ASSERT_COMMON(pfifo, "Got a NULL fifo");
     ASSERT_COMMON(ppvDataOut, "Got a NULL data ptr");
     while (!ck_ring_dequeue_spsc(&pfifo->ck_ring_fifo, pfifo->ck_ring_fifo_buf, ppvDataOut)) {
     }
     return LF_FIFO_SUCCESS;
 }
-LF_FIFO_API err_LF_Fifo_t LF_Fifo_TryPop(LF_Fifo_t* pfifo, void** ppvDataOut) {
+LF_FIFO_API err_LF_Fifo_t LF_Fifo_TryPop(LF_Fifo_t* pfifo, void* ppvDataOut) {
     ASSERT_COMMON(pfifo, "Got a NULL fifo");
     ASSERT_COMMON(ppvDataOut, "Got a NULL data ptr");
     if (!ck_ring_dequeue_spsc(&pfifo->ck_ring_fifo, pfifo->ck_ring_fifo_buf, ppvDataOut)) {
@@ -113,19 +112,19 @@ LF_FIFO_API err_LF_Fifo_t LF_Fifo_TryPop(LF_Fifo_t* pfifo, void** ppvDataOut) {
     return LF_FIFO_SUCCESS;
 }
 
-LF_FIFO_API err_LF_Fifo_t LF_Fifo_TimedPop(LF_Fifo_t* pfifo, void** ppvDataOut,
+LF_FIFO_API err_LF_Fifo_t LF_Fifo_TimedPop(LF_Fifo_t* pfifo, void* ppvDataOut,
                                            const struct timespec* Timeout) {
     ASSERT_COMMON(pfifo, "Got a NULL fifo");
     ASSERT_COMMON(ppvDataOut, "Got a NULL data ptr");
-    ASSERT_COMMON(Timeout->tv_nsec >= timeOutWakeUp.tv_nsec, "TimeOut Too Short, Must be >= %lu ns",
-                  timeOutWakeUp.tv_nsec);
+    ASSERT_COMMON(Timeout->tv_nsec + (Timeout->tv_sec * 1000000000) >= timeOutWakeUp.tv_nsec,
+                  "TimeOut Too Short, Must be >= %lu ns", timeOutWakeUp.tv_nsec);
 
     uint64_t finalCount =
         ((Timeout->tv_sec * 1000000000) + Timeout->tv_nsec) / timeOutWakeUp.tv_nsec;
     uint64_t wakeUpCounter = 0;
     while (!ck_ring_dequeue_spsc(&pfifo->ck_ring_fifo, pfifo->ck_ring_fifo_buf, ppvDataOut)) {
         if (wakeUpCounter++ == finalCount) {
-            return LF_FIFO_FAIL_TIMED_PUSH;
+            return LF_FIFO_FAIL_TIMED_POP;
         }
     }
     return LF_FIFO_SUCCESS;
