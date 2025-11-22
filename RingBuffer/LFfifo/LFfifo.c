@@ -19,6 +19,8 @@ typedef struct LF_Fifo_t {
 } LF_Fifo_t;
 
 struct timespec timeOutWakeUp = {.tv_nsec = 1000, .tv_sec = 0};
+
+#define POWER_OF_CHECK(x) ((x) && !((x) & ((x) - 1)))
 /* ================================================== */
 /*            FUNCTION PROTOTYPES (DECLARATIONS)      */
 /* ================================================== */
@@ -30,7 +32,7 @@ struct timespec timeOutWakeUp = {.tv_nsec = 1000, .tv_sec = 0};
 LF_FIFO_API err_LF_Fifo_t LF_Fifo_Init(LF_Fifo_t** ppFifoOut, size_t capacity) {
     ASSERT_COMMON(ppFifoOut, "Got a NULL fifo Ptr");
     ASSERT_COMMON(capacity > 0, "Empty Cpaacity Fifo, Are you sure moneky?");
-
+    ASSERT_COMMON(POWER_OF_CHECK(capacity + 1), "Capaciy must be one less then a power of 2");
     LF_Fifo_t* pFifoBuf = (LF_Fifo_t*)malloc(sizeof(LF_Fifo_t));
     if (!pFifoBuf) {
         return LF_FIFO_FAIL_INIT_SYSTEM;
@@ -72,7 +74,7 @@ LF_FIFO_API err_LF_Fifo_t LF_Fifo_TryPush(LF_Fifo_t* pfifo, void* pvData) {
     ASSERT_COMMON(pfifo, "Got a NULL fifo");
     ASSERT_COMMON(pvData, "Got a NULL data ptr");
     if (!ck_ring_enqueue_spsc(&pfifo->ck_ring_fifo, pfifo->ck_ring_fifo_buf, pvData)) {
-        return LF_FIFO_FAIL_TRY_PUSH;
+        return LF_FIFO_FAIL_TIMED_PUSH;
     }
     return LF_FIFO_SUCCESS;
 }

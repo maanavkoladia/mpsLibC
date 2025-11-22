@@ -15,6 +15,7 @@ LD_FLAGS = \
 
 SRC_FILES = \
 	RingBuffer/PFifo/PFifo.c \
+	RingBuffer/LFfifo/LFfifo.c \
 	ThreadPool/ThreadPool.c \
 
 # Object files go in build/, preserving subdirectory structure
