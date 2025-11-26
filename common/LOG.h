@@ -10,7 +10,7 @@
 /* ================================================== */
 /*            GLOBAL VARIABLE DEFINITIONS             */
 /* ================================================== */
-#define PLOG_BUFSIZE (4096)
+#define PLOG_BUFSIZE (8192)
 
 #define ANSI_COLOR_RESET "\x1b[0m"
 #define ANSI_COLOR_RED "\x1b[31m"
@@ -28,22 +28,20 @@
 /* ================================================== */
 /*                 FUNCTION DEFINITIONS               */
 /* ================================================== */
-#define __FILENAME__                                                           \
-    (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 #ifndef NDEBUG
-#define LOG(fmt, ...)                                                          \
-    do {                                                                       \
-        char ___logBuf[PLOG_BUFSIZE];                                          \
-        snprintf(___logBuf, sizeof(___logBuf),                                 \
-                 ANSI_COLOR_CYAN                                               \
-                 "[%s:%d:%s] \n" ANSI_COLOR_WHITE fmt ANSI_COLOR_RESET "\n",   \
-                 __FILENAME__, __LINE__, __func__, ##__VA_ARGS__);             \
-        fprintf(stderr, "%s", ___logBuf);                                      \
-        fflush(stderr);                                                        \
-    } while (0)
+#    define LOG(fmt, ...)                                                                          \
+        do {                                                                                       \
+            char ___logBuf[PLOG_BUFSIZE];                                                          \
+            snprintf(___logBuf, sizeof(___logBuf),                                                 \
+                     ANSI_COLOR_CYAN "[%s:%d:%s] \n" ANSI_COLOR_WHITE fmt ANSI_COLOR_RESET "\n",   \
+                     __FILENAME__, __LINE__, __func__, ##__VA_ARGS__);                             \
+            fprintf(stderr, "%s", ___logBuf);                                                      \
+            fflush(stderr);                                                                        \
+        } while (0)
 #else
-#define LOG(...)                                                               \
-    do {                                                                       \
-    } while (0)
+#    define LOG(...)                                                                               \
+        do {                                                                                       \
+        } while (0)
 #endif
